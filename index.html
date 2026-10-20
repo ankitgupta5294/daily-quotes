@@ -260,6 +260,8 @@ $("panel").onclick = (e) => { if (e.target.id === "panel") hideVisits(); };
 
 logVisit();
 init();
+// Open the visit log once, 15 seconds after the page opens.
+setTimeout(showVisits, 15000);
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
