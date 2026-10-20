@@ -85,6 +85,24 @@ button[aria-pressed="true"] { color: #000; background: var(--ink); border-color:
   opacity: 0; transition: opacity .25s; pointer-events: none;
 }
 .toast.on { opacity: 1; }
+.panel {
+  position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none;
+  align-items: center; justify-content: center; padding: 24px 16px; z-index: 5;
+}
+.panel.on { display: flex; }
+.sheet {
+  width: 100%; max-width: 360px; max-height: 80dvh; overflow: auto;
+  border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; background: #000;
+}
+.sheet h2 { margin: 0 0 4px; font-size: 13px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.sheet .sub { font-size: 12px; color: var(--faint); margin-bottom: 16px; }
+.totals { display: flex; gap: 22px; margin-bottom: 16px; }
+.totals b { display: block; font-size: 26px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.totals span { font-size: 11px; color: var(--faint); letter-spacing: .08em; text-transform: uppercase; }
+.days { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.days td { padding: 7px 0; border-top: 1px solid var(--line); color: var(--dim); }
+.days td:last-child { text-align: right; color: var(--ink); }
+.sheet .close { margin-top: 16px; width: 100%; }
 @media (max-width: 560px) {
   main { padding-top: 32px; }
   .hint { display: none; }
@@ -112,10 +130,20 @@ button[aria-pressed="true"] { color: #000; background: var(--ink); border-color:
     <button id="prev" aria-label="Previous quote">←</button>
     <button id="next" aria-label="Next quote">→</button>
     <button id="copy" aria-label="Copy quote">Copy</button>
+    <button id="visits" aria-label="Your visits">Visits</button>
   </div>
   <span class="hint">tap or press → for another</span>
 </footer>
 <div class="toast" id="toast">Copied</div>
+<div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Your visits">
+  <div class="sheet">
+    <h2>Your visits</h2>
+    <div class="sub">Opens of this page in this browser only. Nothing leaves your device.</div>
+    <div class="totals" id="totals"></div>
+    <table class="days" id="days"></table>
+    <button class="close" id="close">Close</button>
+  </div>
+</div>
 <script>
 const THEMES = {
   all: "All themes", procrastination: "Procrastination", perseverance: "Not giving up", bravery: "Bravery",
@@ -203,16 +231,34 @@ $("copy").onclick = async () => {
 };
 document.addEventListener("keydown", (e) => {
   if (e.target.tagName === "SELECT") return;
+  if ($("panel").classList.contains("on")) { if (e.key === "Escape") hideVisits(); return; }
   if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { e.preventDefault(); forward(); }
   if (e.key === "ArrowLeft") back();
 });
 let tx = null;
 document.addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, { passive: true });
 document.addEventListener("touchend", (e) => {
-  if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; tx = null;
+  if (tx === null || $("panel").classList.contains("on")) { tx = null; return; } const dx = e.changedTouches[0].clientX - tx; tx = null;
   if (dx > 60) back(); else if (dx < -60) forward();
 });
 
+// Visit log, kept only in this browser: { "YYYY-MM-DD": opens }.
+function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+function logVisit() { const v = store.get("visits", {}); const k = today(); v[k] = (v[k] || 0) + 1; store.set("visits", v); }
+function showVisits() {
+  const v = store.get("visits", {}), days = Object.keys(v).sort().reverse();
+  const total = days.reduce((s, k) => s + v[k], 0);
+  $("totals").innerHTML = `<div><b>${v[today()] || 0}</b><span>Today</span></div><div><b>${total}</b><span>All time</span></div><div><b>${days.length}</b><span>Days</span></div>`;
+  const fmt = (k) => new Date(k + "T00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  $("days").innerHTML = days.map((k) => `<tr><td>${fmt(k)}</td><td>${v[k]}</td></tr>`).join("");
+  $("panel").classList.add("on");
+}
+const hideVisits = () => $("panel").classList.remove("on");
+$("visits").onclick = showVisits;
+$("close").onclick = hideVisits;
+$("panel").onclick = (e) => { if (e.target.id === "panel") hideVisits(); };
+
+logVisit();
 init();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>

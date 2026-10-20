@@ -1,5 +1,5 @@
 /* Offline support: cache the page and the quotes on install; afterwards serve from cache and refresh in the background. */
-const CACHE = "daily-quotes-v1";
+const CACHE = "daily-quotes-v2";
 const CORE = ["./", "index.html", "quotes.json", "manifest.webmanifest", "icons/icon.svg", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
